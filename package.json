@@ -1,0 +1,9 @@
+{
+  "name": "clinic-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "אתר קליניקה – רפואה סינית, קרניו סאקרל, עיסוי הריון ועיסוי רפואי",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>טיפולים</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600&family=Frank+Ruhl+Libre:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+  <main id="page"></main>
+  <footer id="site-footer"></footer>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const { settings, services } = await initLayout();
+      const slug = location.pathname.split('/').filter(Boolean)[1];
+      const s = services.find((x) => x.slug === slug);
+      const page = document.getElementById('page');
+      if (!s) {
+        page.innerHTML = `<section class="page-hero"><div class="container"><h1>הטיפול לא נמצא</h1><a class="btn btn-ghost" href="/">חזרה לדף הבית</a></div></section>`;
+        return;
+      }
+      document.title = `${s.title} · ${settings.clinicName}`;
+
+      page.innerHTML = `
+        <section class="page-hero">
+          <div class="container">
+            <div class="crumbs"><a href="/">בית</a> / <span>טיפולים</span> / <span>${esc(s.title)}</span></div>
+            <div class="icon-ring">${ICONS[s.icon] || ICONS.leaf}</div>
+            <h1>${esc(s.title)}</h1>
+            <p>${esc(s.tagline)}</p>
+          </div>
+          ${WAVE('#fbf8f3')}
+        </section>
+
+        <section class="bg-cream">
+          <div class="container service-layout">
+            <div class="reveal">
+              <span class="eyebrow">על הטיפול</span>
+              <h2>מה זה ${esc(s.title)}?</h2>
+              <div class="prose">${esc(s.intro)}</div>
+              <h3 style="margin-top:40px">למה זה טוב?</h3>
+              <ul class="benefits">${(s.benefits || []).map((b) => `<li>${esc(b)}</li>`).join('')}</ul>
+            </div>
+            <aside class="info-card reveal">
+              <h3>פרטי הטיפול</h3>
+              <div class="info-row"><span>משך</span><strong>${esc(s.duration)}</strong></div>
+              <div class="info-row"><span>מחיר</span><strong>${esc(s.price)}</strong></div>
+              <div class="info-row"><span>מיקום</span><strong>${esc(settings.address)}</strong></div>
+              <a class="btn btn-primary" href="${waLink(settings, `שלום, אשמח לקבוע תור ל${s.title} 🙂`)}" target="_blank" rel="noopener">קביעת תור ל${esc(s.title)}</a>
+            </aside>
+          </div>
+        </section>
+
+        <section>
+          <div class="container">
+            <div class="section-head reveal"><span class="eyebrow">איך זה עובד</span><h2>מהלך הטיפול</h2></div>
+            <div class="steps">${(s.process || []).map((p) => `<div class="step reveal"><h3>${esc(p.title)}</h3><p>${esc(p.text)}</p></div>`).join('')}</div>
+          </div>
+        </section>
+
+        ${(s.faq || []).length ? `
+        <section class="bg-sage">
+          <div class="narrow faq">
+            <div class="section-head reveal"><span class="eyebrow">שאלות נפוצות</span><h2>כדאי לדעת</h2></div>
+            ${s.faq.map((f) => `<details class="reveal"><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join('')}
+          </div>
+        </section>` : ''}
+
+        <section>
+          <div class="container">
+            ${ctaBlock(settings, `רוצים לנסות ${s.title}?`)}
+            <div class="section-head" style="margin:70px auto 24px"><h3>טיפולים נוספים</h3></div>
+            <div class="other-services">${services.filter((x) => x.slug !== s.slug).map((x) => `<a class="btn btn-ghost" href="/tipulim/${x.slug}">${esc(x.title)}</a>`).join('')}</div>
+          </div>
+        </section>`;
+      observeReveal();
+    })();
+  </script>
+</body>
+</html>

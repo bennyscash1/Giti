@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>מרחב נשימה · קליניקה לטיפול הוליסטי</title>
+  <meta name="description" content="קליניקה פרטית לרפואה סינית, קרניו סאקרל, עיסוי הריון ועיסוי רפואי.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600&family=Frank+Ruhl+Libre:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="reveal">
+          <span class="eyebrow" id="hero-eyebrow"></span>
+          <h1 id="hero-title"></h1>
+          <p class="lead" id="hero-sub"></p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" id="hero-book" target="_blank" rel="noopener">לקביעת תור</a>
+            <a class="btn btn-ghost" href="#services">לטיפולים שלנו</a>
+          </div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="blob"></div>
+          <div class="blob b2"></div>
+          <div class="breath"></div>
+          <div class="breath r2"></div>
+          <div class="breath-label" id="breath-label">שאיפה</div>
+          <div class="leaf l1"></div>
+          <div class="leaf l2"></div>
+        </div>
+      </div>
+      <div id="wave-1"></div>
+    </section>
+
+    <section id="services" class="bg-cream">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">תחומי הטיפול</span>
+          <h2>טיפול שמקשיב לגוף</h2>
+          <p>ארבעה עולמות טיפוליים, גישה אחת: הקשבה, עדינות והתאמה אישית.</p>
+        </div>
+        <div class="services-grid" id="services-grid"></div>
+      </div>
+    </section>
+
+    <section id="about">
+      <div class="container about-grid">
+        <div class="about-visual reveal" id="about-visual"></div>
+        <div class="reveal">
+          <span class="eyebrow" id="about-name"></span>
+          <h2 id="about-title"></h2>
+          <p class="about-text" id="about-text"></p>
+          <div class="stats">
+            <div><strong>+10</strong><span>שנות ניסיון</span></div>
+            <div><strong>+2,000</strong><span>טיפולים</span></div>
+            <div><strong>4</strong><span>תחומי התמחות</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-sage quote-band">
+      <div class="container reveal">
+        <blockquote>״כשהגוף מרגיש בטוח, הוא יודע את הדרך לרפא את עצמו.״</blockquote>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">מילים חמות</span>
+          <h2>מה אומרים המטופלים</h2>
+        </div>
+        <div class="testimonials" id="testimonials"></div>
+      </div>
+    </section>
+
+    <section class="bg-cream">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">מהבלוג</span>
+          <h2>השראה לחיים רגועים יותר</h2>
+        </div>
+        <div class="posts-grid" id="latest-posts"></div>
+        <div style="text-align:center;margin-top:40px"><a class="btn btn-ghost" href="/blog">לכל המאמרים</a></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container" id="cta"></div>
+    </section>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const { settings, services } = await initLayout();
+      document.title = `${settings.clinicName} · ${settings.tagline}`;
+      document.getElementById('hero-eyebrow').textContent = settings.tagline;
+      document.getElementById('hero-title').textContent = settings.heroTitle;
+      document.getElementById('hero-sub').textContent = settings.heroSubtitle;
+      document.getElementById('hero-book').href = waLink(settings);
+      document.querySelectorAll('.leaf').forEach((l) => (l.innerHTML = LEAF_SVG));
+      document.getElementById('wave-1').outerHTML = WAVE('#fbf8f3');
+
+      // מעגל נשימה: מחליף בין "שאיפה" ל"נשיפה" בקצב האנימציה
+      const label = document.getElementById('breath-label');
+      setInterval(() => (label.textContent = label.textContent === 'שאיפה' ? 'נשיפה' : 'שאיפה'), 4000);
+
+      document.getElementById('services-grid').innerHTML = services.map((s) => `
+        <a class="service-card reveal" href="/tipulim/${s.slug}">
+          <div class="service-icon">${ICONS[s.icon] || ICONS.leaf}</div>
+          <h3>${esc(s.title)}</h3>
+          <p>${esc(s.short)}</p>
+          <span class="more">לפרטים ${ICONS.arrow}</span>
+        </a>`).join('');
+
+      document.getElementById('about-visual').innerHTML = ICONS.bloom.replace('stroke="currentColor"', 'stroke="#fff"');
+      document.getElementById('about-name').textContent = settings.therapistName;
+      document.getElementById('about-title').textContent = settings.aboutTitle;
+      document.getElementById('about-text').textContent = settings.aboutText;
+
+      document.getElementById('testimonials').innerHTML = (settings.testimonials || []).map((t) => `
+        <div class="testimonial reveal"><p>${esc(t.text)}</p><cite>— ${esc(t.name)}</cite></div>`).join('');
+
+      const posts = await api('posts');
+      document.getElementById('latest-posts').innerHTML = posts.length
+        ? posts.slice(0, 3).map(postCard).join('')
+        : '<p class="empty">בקרוב יעלו כאן מאמרים 🌿</p>';
+
+      document.getElementById('cta').innerHTML = ctaBlock(settings);
+      observeReveal();
+    })();
+  </script>
+</body>
+</html>

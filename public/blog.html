@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>בלוג</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600&family=Frank+Ruhl+Libre:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <div class="crumbs"><a href="/">בית</a> / <span>בלוג</span></div>
+        <div class="icon-ring" id="blog-icon"></div>
+        <h1>הבלוג</h1>
+        <p>מאמרים, טיפים והשראה — לגוף רגוע ולנפש שקטה.</p>
+      </div>
+      <div id="wave"></div>
+    </section>
+    <section class="bg-cream">
+      <div class="container">
+        <div class="filters" id="filters"></div>
+        <div class="posts-grid" id="posts"></div>
+      </div>
+    </section>
+  </main>
+  <footer id="site-footer"></footer>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const { settings } = await initLayout();
+      document.title = `בלוג · ${settings.clinicName}`;
+      document.getElementById('blog-icon').innerHTML = ICONS.leaf;
+      document.getElementById('wave').outerHTML = WAVE('#fbf8f3');
+
+      const posts = await api('posts');
+      const cats = [...new Set(posts.map((p) => p.category).filter(Boolean))];
+      const filtersEl = document.getElementById('filters');
+      const grid = document.getElementById('posts');
+      let current = '';
+
+      const draw = () => {
+        filtersEl.innerHTML = cats.length
+          ? ['', ...cats].map((c) => `<button data-cat="${esc(c)}" class="${c === current ? 'on' : ''}">${c ? esc(c) : 'הכל'}</button>`).join('')
+          : '';
+        const list = posts.filter((p) => !current || p.category === current);
+        grid.innerHTML = list.length ? list.map(postCard).join('') : '<p class="empty">עדיין אין מאמרים 🌿</p>';
+        observeReveal();
+      };
+      filtersEl.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        current = b.dataset.cat;
+        draw();
+      });
+      draw();
+    })();
+  </script>
+</body>
+</html>

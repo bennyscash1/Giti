@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>ניהול תוכן</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600&family=Frank+Ruhl+Libre:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { background: #f1ece4; }
+    .admin-bar { background: var(--sage-deep); color: #fff; }
+    .admin-bar .container { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 12px; }
+    .admin-bar a, .admin-bar button { color: #fff; }
+    .admin-bar h1 { font-size: 1.3rem; margin: 0; }
+    .tabs { display: flex; gap: 6px; margin: 28px 0 22px; flex-wrap: wrap; }
+    .tabs button { font: 600 1rem var(--sans); padding: 10px 22px; border-radius: 999px; border: 0; background: var(--cream); color: var(--ink); cursor: pointer; }
+    .tabs button.on { background: var(--sage-deep); color: #fff; }
+    .panel { background: var(--cream); border-radius: var(--radius); padding: clamp(18px, 3vw, 32px); box-shadow: var(--shadow); margin-bottom: 40px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 700px) { .row { grid-template-columns: 1fr; } }
+    label { display: block; font-weight: 600; font-size: .95rem; margin: 14px 0 6px; }
+    label small { font-weight: 400; color: var(--muted); }
+    input[type=text], input[type=date], input[type=password], textarea, select {
+      width: 100%; font: 1rem var(--sans); padding: 11px 14px; border-radius: 12px;
+      border: 1px solid var(--stone); background: #fff; color: var(--ink);
+    }
+    textarea { min-height: 110px; resize: vertical; line-height: 1.6; }
+    textarea.tall { min-height: 340px; }
+    input:focus, textarea:focus { outline: 2px solid var(--sage); border-color: transparent; }
+    .post-list { display: grid; gap: 10px; }
+    .post-item { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 14px; background: var(--sand); }
+    .post-item .t { flex: 1; min-width: 0; }
+    .post-item .t strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .post-item .t span { font-size: .85rem; color: var(--muted); }
+    .badge { font-size: .8rem; padding: 2px 10px; border-radius: 999px; background: var(--sage-soft); color: var(--sage-deep); }
+    .badge.draft { background: var(--clay-soft); color: #8a5a3c; }
+    .sm { padding: 8px 16px; font-size: .9rem; }
+    .danger { color: #a14a3c; border-color: rgba(161,74,60,.35); }
+    .danger:hover { background: #f6e3df; }
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .editor-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; align-items: center; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+    .preview { background: #fff; border-radius: 14px; padding: 20px 26px; border: 1px solid var(--stone); max-height: 640px; overflow: auto; }
+    .cover-preview { margin-top: 10px; max-height: 160px; border-radius: 12px; }
+    .switch { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; }
+    .switch input { width: 20px; height: 20px; accent-color: var(--sage-deep); }
+    .toast { position: fixed; bottom: 24px; right: 50%; transform: translateX(50%); background: var(--ink); color: #fff; padding: 12px 24px; border-radius: 999px; opacity: 0; transition: .4s; pointer-events: none; z-index: 99; }
+    .toast.show { opacity: 1; }
+    .login { max-width: 420px; margin: 12vh auto; text-align: center; }
+    .help { font-size: .88rem; color: var(--muted); background: var(--sand); padding: 12px 16px; border-radius: 12px; line-height: 1.7; }
+    .help code { background: #fff; padding: 0 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div class="toast" id="toast"></div>
+
+  <script src="/js/common.js"></script>
+  <script>
+    const app = document.getElementById('app');
+    let KEY = sessionStorage.getItem('adminKey') || '';
+    let state = { tab: 'posts', posts: [], services: [], settings: {}, editing: null };
+
+    const toast = (msg) => {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    };
+    const authed = (path, method = 'GET', body) =>
+      api(path, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': KEY },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+    // שורות טקסט <-> מערכים (פורמט "כותרת | טקסט")
+    const linesToList = (t) => t.split('\n').map((l) => l.trim()).filter(Boolean);
+    const linesToPairs = (t, a, b) => linesToList(t).map((l) => { const [x, ...y] = l.split('|'); return { [a]: x.trim(), [b]: y.join('|').trim() }; });
+    const pairsToLines = (arr, a, b) => (arr || []).map((o) => `${o[a]} | ${o[b]}`).join('\n');
+
+    /* ---------- התחברות ---------- */
+    function showLogin(err = '') {
+      app.innerHTML = `
+        <div class="login panel">
+          <div class="icon-ring" style="width:90px;height:90px;margin:0 auto 20px;border-radius:50%;display:grid;place-items:center;background:var(--sage-soft);color:var(--sage-deep)"><div style="width:44px">${ICONS.leaf}</div></div>
+          <h2>כניסה לניהול</h2>
+          <p style="color:var(--muted)">הזינו את סיסמת הניהול כדי לערוך את תוכן האתר.</p>
+          <form id="login-form">
+            <input type="password" id="pw" placeholder="סיסמה" autocomplete="current-password" required>
+            ${err ? `<p style="color:#a14a3c;margin-top:10px">${esc(err)}</p>` : ''}
+            <button class="btn btn-primary" style="width:100%;margin-top:16px">כניסה</button>
+          </form>
+          <p style="margin-top:18px"><a href="/">← חזרה לאתר</a></p>
+        </div>`;
+      document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        KEY = document.getElementById('pw').value;
+        try {
+          await authed('login', 'POST');
+          sessionStorage.setItem('adminKey', KEY);
+          boot();
+        } catch {
+          KEY = '';
+          showLogin('סיסמה שגויה');
+        }
+      });
+    }
+
+    async function boot() {
+      try { await authed('login', 'POST'); } catch { return showLogin(); }
+      const [posts, services, settings] = await Promise.all([authed('posts'), authed('services'), authed('settings')]);
+      Object.assign(state, { posts, services: services.sort((a, b) => a.order - b.order), settings });
+      render();
+    }
+
+    function render() {
+      app.innerHTML = `
+        <div class="admin-bar"><div class="container">
+          <h1>🌿 ניהול תוכן · ${esc(state.settings.clinicName)}</h1>
+          <div style="display:flex;gap:16px;align-items:center">
+            <a href="/" target="_blank">צפייה באתר ↗</a>
+            <button class="btn btn-ghost sm" id="logout" style="border-color:rgba(255,255,255,.4)">יציאה</button>
+          </div>
+        </div></div>
+        <div class="container">
+          <div class="tabs">
+            <button data-tab="posts" class="${state.tab === 'posts' ? 'on' : ''}">📝 מאמרים</button>
+            <button data-tab="services" class="${state.tab === 'services' ? 'on' : ''}">🌸 תחומי טיפול</button>
+            <button data-tab="settings" class="${state.tab === 'settings' ? 'on' : ''}">⚙️ תוכן ופרטי קליניקה</button>
+          </div>
+          <div id="tab-body"></div>
+        </div>`;
+      app.querySelector('.tabs').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        state.tab = b.dataset.tab;
+        state.editing = null;
+        render();
+      });
+      document.getElementById('logout').onclick = () => { sessionStorage.removeItem('adminKey'); KEY = ''; showLogin(); };
+      ({ posts: state.editing ? renderEditor : renderPostList, services: renderServices, settings: renderSettings })[state.tab]();
+    }
+
+    /* ---------- מאמרים ---------- */
+    function renderPostList() {
+      const body = document.getElementById('tab-body');
+      body.innerHTML = `
+        <div class="panel">
+          <div class="toolbar">
+            <h2 style="margin:0">מאמרים בבלוג</h2>
+            <button class="btn btn-primary" id="new-post">+ מאמר חדש</button>
+          </div>
+          <div class="post-list">
+            ${state.posts.length ? state.posts.map((p) => `
+              <div class="post-item">
+                <div class="t"><strong>${esc(p.title)}</strong><span>${fmtDate(p.date)}${p.category ? ' · ' + esc(p.category) : ''}</span></div>
+                <span class="badge ${p.published ? '' : 'draft'}">${p.published ? 'מפורסם' : 'טיוטה'}</span>
+                ${p.published ? `<a class="btn btn-ghost sm" href="/blog/${encodeURIComponent(p.slug)}" target="_blank">צפייה</a>` : ''}
+                <button class="btn btn-ghost sm" data-edit="${p.id}">עריכה</button>
+                <button class="btn btn-ghost sm danger" data-del="${p.id}">מחיקה</button>
+              </div>`).join('') : '<p class="empty">אין עדיין מאמרים. צרו את הראשון!</p>'}
+          </div>
+        </div>`;
+      document.getElementById('new-post').onclick = () => {
+        state.editing = { title: '', slug: '', excerpt: '', content: '', cover: '', category: '', published: false, date: new Date().toISOString().slice(0, 10) };
+        render();
+      };
+      body.querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => {
+        state.editing = { ...state.posts.find((p) => p.id === b.dataset.edit) };
+        render();
+      }));
+      body.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
+        const p = state.posts.find((x) => x.id === b.dataset.del);
+        if (!confirm(`למחוק את "${p.title}"?`)) return;
+        await authed('posts/' + p.id, 'DELETE');
+        state.posts = state.posts.filter((x) => x.id !== p.id);
+        toast('המאמר נמחק');
+        render();
+      }));
+    }
+
+    function renderEditor() {
+      const p = state.editing;
+      const cats = [...new Set(state.posts.map((x) => x.category).filter(Boolean))];
+      const body = document.getElementById('tab-body');
+      body.innerHTML = `
+        <div class="panel">
+          <div class="toolbar">
+            <h2 style="margin:0">${p.id ? 'עריכת מאמר' : 'מאמר חדש'}</h2>
+            <button class="btn btn-ghost sm" id="back">← חזרה לרשימה</button>
+          </div>
+          <label>כותרת</label>
+          <input type="text" id="f-title" value="${esc(p.title)}" placeholder="למשל: 5 דרכים להירגע ביום עמוס">
+          <div class="row">
+            <div><label>קטגוריה</label><input type="text" id="f-category" list="cats" value="${esc(p.category)}" placeholder="רוגע ואיזון"><datalist id="cats">${cats.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></div>
+            <div><label>תאריך</label><input type="date" id="f-date" value="${esc(p.date)}"></div>
+          </div>
+          <label>תקציר <small>(מוצג בכרטיס המאמר)</small></label>
+          <textarea id="f-excerpt" style="min-height:70px">${esc(p.excerpt)}</textarea>
+          <div class="row">
+            <div>
+              <label>תמונה ראשית <small>(העלאה או קישור)</small></label>
+              <input type="text" id="f-cover" value="${esc(p.cover)}" placeholder="https://... או העלו קובץ">
+              <input type="file" id="f-file" accept="image/*" style="margin-top:8px">
+              <div id="cover-prev">${p.cover ? `<img class="cover-preview" src="${esc(p.cover)}">` : ''}</div>
+            </div>
+            <div><label>כתובת (slug) <small>(אופציונלי)</small></label><input type="text" id="f-slug" value="${esc(p.slug)}" placeholder="נוצר אוטומטית מהכותרת"></div>
+          </div>
+          <div class="split" style="margin-top:6px">
+            <div>
+              <label>תוכן המאמר</label>
+              <textarea class="tall" id="f-content" placeholder="כתבו כאן...">${esc(p.content)}</textarea>
+              <div class="help" style="margin-top:10px">עיצוב: <code>## כותרת</code> · <code>**מודגש**</code> · <code>*נטוי*</code> · <code>- פריט ברשימה</code> · <code>[קישור](https://...)</code> · <code>![תמונה](/uploads/...)</code><br>שורה ריקה = פסקה חדשה.</div>
+            </div>
+            <div><label>תצוגה מקדימה</label><div class="preview article" id="preview"></div></div>
+          </div>
+          <div class="editor-actions">
+            <label class="switch" style="margin:0"><input type="checkbox" id="f-published" ${p.published ? 'checked' : ''}> פרסום באתר</label>
+            <span style="flex:1"></span>
+            <button class="btn btn-primary" id="save">שמירה</button>
+          </div>
+        </div>`;
+
+      const $ = (id) => document.getElementById(id);
+      const preview = () => ($('preview').innerHTML = `<h1 style="font-size:2rem">${esc($('f-title').value)}</h1>${renderMarkdown($('f-content').value)}`);
+      ['f-title', 'f-content'].forEach((id) => $(id).addEventListener('input', preview));
+      preview();
+      $('f-cover').addEventListener('input', () => ($('cover-prev').innerHTML = $('f-cover').value ? `<img class="cover-preview" src="${esc($('f-cover').value)}">` : ''));
+      $('back').onclick = () => { state.editing = null; render(); };
+
+      $('f-file').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const dataUrl = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(file); });
+        try {
+          const { url } = await authed('upload', 'POST', { dataUrl });
+          $('f-cover').value = url;
+          $('cover-prev').innerHTML = `<img class="cover-preview" src="${url}">`;
+          toast('התמונה הועלתה');
+        } catch (err) { toast('שגיאה: ' + err.message); }
+      });
+
+      $('save').onclick = async () => {
+        const data = {
+          title: $('f-title').value.trim(),
+          category: $('f-category').value.trim(),
+          date: $('f-date').value,
+          excerpt: $('f-excerpt').value.trim(),
+          cover: $('f-cover').value.trim(),
+          slug: $('f-slug').value.trim(),
+          content: $('f-content').value,
+          published: $('f-published').checked,
+        };
+        if (!data.title) return toast('נא למלא כותרת');
+        try {
+          const saved = p.id ? await authed('posts/' + p.id, 'PUT', data) : await authed('posts', 'POST', data);
+          state.posts = await authed('posts');
+          state.editing = { ...saved };
+          toast(saved.published ? 'נשמר ופורסם ✓' : 'נשמר כטיוטה ✓');
+          render();
+        } catch (err) { toast('שגיאה: ' + err.message); }
+      };
+    }
+
+    /* ---------- תחומי טיפול ---------- */
+    function renderServices() {
+      const body = document.getElementById('tab-body');
+      const sel = state.serviceSlug || state.services[0].slug;
+      const s = state.services.find((x) => x.slug === sel);
+      body.innerHTML = `
+        <div class="panel">
+          <div class="toolbar">
+            <h2 style="margin:0">עריכת דף טיפול</h2>
+            <select id="svc-select" style="max-width:260px">${state.services.map((x) => `<option value="${x.slug}" ${x.slug === sel ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</select>
+          </div>
+          <div class="row">
+            <div><label>שם הטיפול</label><input type="text" id="s-title" value="${esc(s.title)}"></div>
+            <div><label>משפט מוביל</label><input type="text" id="s-tagline" value="${esc(s.tagline)}"></div>
+          </div>
+          <label>תיאור קצר <small>(בכרטיס בדף הבית)</small></label>
+          <input type="text" id="s-short" value="${esc(s.short)}">
+          <label>הסבר על הטיפול</label>
+          <textarea id="s-intro" style="min-height:180px">${esc(s.intro)}</textarea>
+          <div class="row">
+            <div><label>משך</label><input type="text" id="s-duration" value="${esc(s.duration)}"></div>
+            <div><label>מחיר</label><input type="text" id="s-price" value="${esc(s.price)}"></div>
+          </div>
+          <label>יתרונות <small>(שורה לכל יתרון)</small></label>
+          <textarea id="s-benefits">${esc((s.benefits || []).join('\n'))}</textarea>
+          <label>שלבי הטיפול <small>(שורה לכל שלב: כותרת | הסבר)</small></label>
+          <textarea id="s-process">${esc(pairsToLines(s.process, 'title', 'text'))}</textarea>
+          <label>שאלות נפוצות <small>(שורה לכל שאלה: שאלה | תשובה)</small></label>
+          <textarea id="s-faq">${esc(pairsToLines(s.faq, 'q', 'a'))}</textarea>
+          <div class="editor-actions">
+            <a class="btn btn-ghost" href="/tipulim/${s.slug}" target="_blank">צפייה בדף ↗</a>
+            <span style="flex:1"></span>
+            <button class="btn btn-primary" id="s-save">שמירה</button>
+          </div>
+        </div>`;
+      const $ = (id) => document.getElementById(id);
+      $('svc-select').onchange = (e) => { state.serviceSlug = e.target.value; render(); };
+      $('s-save').onclick = async () => {
+        const data = {
+          title: $('s-title').value.trim(),
+          tagline: $('s-tagline').value.trim(),
+          short: $('s-short').value.trim(),
+          intro: $('s-intro').value,
+          duration: $('s-duration').value.trim(),
+          price: $('s-price').value.trim(),
+          benefits: linesToList($('s-benefits').value),
+          process: linesToPairs($('s-process').value, 'title', 'text'),
+          faq: linesToPairs($('s-faq').value, 'q', 'a'),
+        };
+        try {
+          const saved = await authed('services/' + s.slug, 'PUT', data);
+          state.services = state.services.map((x) => (x.slug === s.slug ? saved : x));
+          toast('דף הטיפול עודכן ✓');
+        } catch (err) { toast('שגיאה: ' + err.message); }
+      };
+    }
+
+    /* ---------- הגדרות ---------- */
+    function renderSettings() {
+      const st = state.settings;
+      const f = (id, label, hint = '') => `<div><label>${label} ${hint ? `<small>(${hint})</small>` : ''}</label><input type="text" id="g-${id}" value="${esc(st[id])}"></div>`;
+      document.getElementById('tab-body').innerHTML = `
+        <div class="panel">
+          <h2>פרטי הקליניקה</h2>
+          <div class="row">${f('clinicName', 'שם הקליניקה')}${f('tagline', 'תת־כותרת')}</div>
+          <div class="row">${f('therapistName', 'שם המטפל/ת')}${f('phone', 'טלפון')}</div>
+          <div class="row">${f('whatsapp', 'וואטסאפ', 'פורמט בינלאומי, לדוגמה 972501234567')}${f('email', 'אימייל')}</div>
+          <div class="row">${f('address', 'כתובת')}${f('hours', 'שעות פעילות')}</div>
+        </div>
+        <div class="panel">
+          <h2>תוכן דף הבית</h2>
+          <label>כותרת ראשית <small>(Enter לשבירת שורה)</small></label>
+          <textarea id="g-heroTitle" style="min-height:70px">${esc(st.heroTitle)}</textarea>
+          <label>טקסט פתיחה</label>
+          <textarea id="g-heroSubtitle" style="min-height:70px">${esc(st.heroSubtitle)}</textarea>
+          ${f('aboutTitle', 'כותרת "אודות"')}
+          <label>טקסט "אודות"</label>
+          <textarea id="g-aboutText" style="min-height:160px">${esc(st.aboutText)}</textarea>
+          <label>המלצות <small>(שורה לכל המלצה: שם | טקסט)</small></label>
+          <textarea id="g-testimonials">${esc(pairsToLines(st.testimonials, 'name', 'text'))}</textarea>
+          <div class="editor-actions"><span style="flex:1"></span><button class="btn btn-primary" id="g-save">שמירה</button></div>
+        </div>`;
+      document.getElementById('g-save').onclick = async () => {
+        const data = {};
+        ['clinicName', 'tagline', 'therapistName', 'phone', 'whatsapp', 'email', 'address', 'hours', 'heroTitle', 'heroSubtitle', 'aboutTitle', 'aboutText']
+          .forEach((k) => (data[k] = document.getElementById('g-' + k).value.trim()));
+        data.testimonials = linesToPairs(document.getElementById('g-testimonials').value, 'name', 'text');
+        try {
+          state.settings = await authed('settings', 'PUT', data);
+          toast('התוכן נשמר ✓');
+          render();
+        } catch (err) { toast('שגיאה: ' + err.message); }
+      };
+    }
+
+    KEY ? boot() : showLogin();
+  </script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>מאמר</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600&family=Frank+Ruhl+Libre:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+  <main id="page"></main>
+  <footer id="site-footer"></footer>
+
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const { settings } = await initLayout();
+      const slug = decodeURIComponent(location.pathname.split('/').filter(Boolean)[1] || '');
+      const page = document.getElementById('page');
+      let p;
+      try { p = await api('posts/' + encodeURIComponent(slug)); } catch { p = null; }
+      if (!p) {
+        page.innerHTML = `<section class="page-hero"><div class="container"><h1>המאמר לא נמצא</h1><a class="btn btn-ghost" href="/blog">חזרה לבלוג</a></div></section>`;
+        return;
+      }
+      document.title = `${p.title} · ${settings.clinicName}`;
+      const others = (await api('posts')).filter((x) => x.id !== p.id).slice(0, 3);
+
+      page.innerHTML = `
+        <section class="page-hero">
+          <div class="narrow">
+            <div class="crumbs"><a href="/">בית</a> / <a href="/blog">בלוג</a></div>
+            <div class="post-meta" style="justify-content:center">${p.category ? `<span class="tag">${esc(p.category)}</span>` : ''}<span>${fmtDate(p.date)}</span></div>
+            <h1>${esc(p.title)}</h1>
+            <p>${esc(p.excerpt)}</p>
+          </div>
+          ${WAVE('#fbf8f3')}
+        </section>
+        <section class="bg-cream">
+          <article class="narrow article reveal">
+            ${p.cover ? `<img class="article-cover" src="${esc(p.cover)}" alt="">` : ''}
+            ${renderMarkdown(p.content)}
+          </article>
+        </section>
+        ${others.length ? `
+        <section>
+          <div class="container">
+            <div class="section-head reveal"><span class="eyebrow">להמשך קריאה</span><h2>מאמרים נוספים</h2></div>
+            <div class="posts-grid">${others.map(postCard).join('')}</div>
+          </div>
+        </section>` : ''}
+        <section><div class="container">${ctaBlock(settings)}</div></section>`;
+      observeReveal();
+    })();
+  </script>
+</body>
+</html>
