@@ -34,8 +34,9 @@ const PAGE_ROUTES = [
 ];
 
 // ב-Vercel מערכת הקבצים לקריאה בלבד, לכן התוכן והתמונות נשמרים ב-Vercel Blob.
-// מקומית (בלי BLOB_READ_WRITE_TOKEN) הכל נשמר בקבצים כרגיל.
-const USE_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
+// מקומית (בלי חיבור ל-Blob) הכל נשמר בקבצים כרגיל.
+// Vercel מחבר Blob עם BLOB_READ_WRITE_TOKEN, או בפרויקטים חדשים עם BLOB_STORE_ID (OIDC).
+const USE_BLOB = !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 const blob = USE_BLOB ? require('@vercel/blob') : null;
 const BLOB_DB = 'data/db.json';
 
