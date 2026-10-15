@@ -48,7 +48,7 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
-function waLink(settings, text = 'שלום, אשמח לקבוע תור 🙂') {
+function waLink(settings, text = 'שלום הגעתם לקליניקה של גיטי') {
   return `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(text)}`;
 }
 
@@ -100,7 +100,7 @@ function renderFooter(settings, services) {
         <div>
           <h4>יצירת קשר</h4>
           <ul>
-            <li><a href="tel:${esc(settings.phone)}">📞 ${esc(settings.phone)}</a></li>
+            <li><a href="tel:${esc(String(settings.phone).replace(/[^\d+]/g, ''))}">📞 ${esc(settings.phone)}</a></li>
             <li><a href="${waLink(settings)}" target="_blank" rel="noopener">💬 וואטסאפ</a></li>
             <li><a href="mailto:${esc(settings.email)}">✉️ ${esc(settings.email)}</a></li>
             <li>📍 ${esc(settings.address)}</li>
@@ -126,7 +126,7 @@ function ctaBlock(settings, title = 'מוכנים לרגע של שקט?', text =
       <p>${esc(text)}</p>
       <div class="cta-actions">
         <a class="btn btn-primary" href="${waLink(settings)}" target="_blank" rel="noopener">קביעת תור בוואטסאפ</a>
-        <a class="btn btn-ghost" href="tel:${esc(settings.phone)}">${esc(settings.phone)}</a>
+        <a class="btn btn-ghost" href="tel:${esc(String(settings.phone).replace(/[^\d+]/g, ''))}">${esc(settings.phone)}</a>
       </div>
     </div>`;
 }
