@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600&family=Frank+Ruhl+Libre:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -31,7 +32,7 @@
         <section class="page-hero">
           <div class="container">
             <div class="crumbs"><a href="/">בית</a> / <span>טיפולים</span> / <span>${esc(s.title)}</span></div>
-            <div class="icon-ring">${ICONS[s.icon] || ICONS.leaf}</div>
+            <div class="icon-ring photo-ring"><img src="/images/${s.slug}.jpg" alt="${esc(s.title)}"></div>
             <h1>${esc(s.title)}</h1>
             <p>${esc(s.tagline)}</p>
           </div>

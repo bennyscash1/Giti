@@ -75,7 +75,7 @@ function renderHeader(settings, services) {
         <li><a href="/blog" class="${path.startsWith('/blog') ? 'active' : ''}">בלוג</a></li>
         <li><a href="#contact">צור קשר</a></li>
       </ul>
-      <a class="btn btn-primary nav-cta" href="${waLink(settings)}" target="_blank" rel="noopener">לקביעת תור</a>
+      <a class="btn btn-primary nav-cta" href="${waLink(settings)}" target="_blank" rel="noopener">${ICONS.whatsapp}<span>לקביעת תור</span></a>
     </div>`;
   el.querySelector('.menu-btn').addEventListener('click', () => document.body.classList.toggle('nav-open'));
   el.querySelectorAll('.nav-links a').forEach((a) => a.addEventListener('click', () => document.body.classList.remove('nav-open')));

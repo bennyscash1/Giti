@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600&family=Frank+Ruhl+Libre:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -26,11 +27,8 @@
           </div>
         </div>
         <div class="hero-art" aria-hidden="true">
-          <div class="blob"></div>
           <div class="blob b2"></div>
-          <div class="breath"></div>
-          <div class="breath r2"></div>
-          <div class="breath-label" id="breath-label">שאיפה</div>
+          <img class="hero-photo" src="/images/hero.jpg" alt="">
           <div class="leaf l1"></div>
           <div class="leaf l2"></div>
         </div>
@@ -111,19 +109,16 @@
       document.querySelectorAll('.leaf').forEach((l) => (l.innerHTML = LEAF_SVG));
       document.getElementById('wave-1').outerHTML = WAVE('#fbf8f3');
 
-      // מעגל נשימה: מחליף בין "שאיפה" ל"נשיפה" בקצב האנימציה
-      const label = document.getElementById('breath-label');
-      setInterval(() => (label.textContent = label.textContent === 'שאיפה' ? 'נשיפה' : 'שאיפה'), 4000);
-
       document.getElementById('services-grid').innerHTML = services.map((s) => `
         <a class="service-card reveal" href="/tipulim/${s.slug}">
+          <div class="service-img"><img src="/images/${s.slug}.jpg" alt="${esc(s.title)}" loading="lazy"></div>
           <div class="service-icon">${ICONS[s.icon] || ICONS.leaf}</div>
           <h3>${esc(s.title)}</h3>
           <p>${esc(s.short)}</p>
           <span class="more">לפרטים ${ICONS.arrow}</span>
         </a>`).join('');
 
-      document.getElementById('about-visual').innerHTML = ICONS.bloom.replace('stroke="currentColor"', 'stroke="#fff"');
+      document.getElementById('about-visual').innerHTML = `<img src="/images/about.jpg" alt="" loading="lazy">`;
       document.getElementById('about-name').textContent = settings.therapistName;
       document.getElementById('about-title').textContent = settings.aboutTitle;
       document.getElementById('about-text').textContent = settings.aboutText;
