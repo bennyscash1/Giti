@@ -33,13 +33,32 @@ const PAGE_ROUTES = [
   [/^\/admin\/?$/, 'admin.html'],
 ];
 
-function readDb() {
+// ב-Vercel מערכת הקבצים לקריאה בלבד, לכן התוכן והתמונות נשמרים ב-Vercel Blob.
+// מקומית (בלי BLOB_READ_WRITE_TOKEN) הכל נשמר בקבצים כרגיל.
+const USE_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
+const blob = USE_BLOB ? require('@vercel/blob') : null;
+const BLOB_DB = 'data/db.json';
+
+async function readDb() {
+  if (USE_BLOB) {
+    const found = await blob.get(BLOB_DB, { access: 'public', useCache: false });
+    if (found) return JSON.parse(await new Response(found.stream).text());
+  }
+  // עדיין לא נשמר כלום ב-Blob: מתחילים מהקובץ שבפרויקט
   return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
 }
 
-function writeDb(db) {
+async function writeDb(db) {
+  const json = JSON.stringify(db, null, 2);
+  if (USE_BLOB) {
+    await blob.put(BLOB_DB, json, {
+      access: 'public', allowOverwrite: true, contentType: 'application/json; charset=utf-8', cacheControlMaxAge: 60,
+    });
+    return;
+  }
+  if (process.env.VERCEL) throw new Error('לא ניתן לשמור: יש לחבר Vercel Blob לפרויקט ב-Vercel');
   const tmp = DB_FILE + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(db, null, 2), 'utf8');
+  fs.writeFileSync(tmp, json, 'utf8');
   fs.renameSync(tmp, DB_FILE);
 }
 
@@ -98,7 +117,7 @@ function uniqueSlug(posts, base, ignoreId) {
 async function handleApi(req, res, url) {
   const parts = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
   const method = req.method;
-  const db = readDb();
+  const db = await readDb();
   const admin = isAdmin(req);
 
   // אימות סיסמת מנהל
@@ -112,7 +131,7 @@ async function handleApi(req, res, url) {
     if (method === 'PUT') {
       if (!admin) return send(res, 401, { error: 'נדרשת הרשאת מנהל' });
       db.settings = { ...db.settings, ...(await readBody(req)) };
-      writeDb(db);
+      await writeDb(db);
       return send(res, 200, db.settings);
     }
   }
@@ -131,7 +150,7 @@ async function handleApi(req, res, url) {
       const body = await readBody(req);
       delete body.slug;
       db.services[idx] = { ...db.services[idx], ...body };
-      writeDb(db);
+      await writeDb(db);
       return send(res, 200, db.services[idx]);
     }
   }
@@ -167,7 +186,7 @@ async function handleApi(req, res, url) {
         date: body.date || new Date().toISOString().slice(0, 10),
       };
       db.posts.push(post);
-      writeDb(db);
+      await writeDb(db);
       return send(res, 201, post);
     }
     if (method === 'PUT' && parts[1]) {
@@ -178,14 +197,14 @@ async function handleApi(req, res, url) {
       merged.slug = uniqueSlug(db.posts, slugify(merged.slug || merged.title), merged.id);
       merged.published = !!merged.published;
       db.posts[idx] = merged;
-      writeDb(db);
+      await writeDb(db);
       return send(res, 200, merged);
     }
     if (method === 'DELETE' && parts[1]) {
       const before = db.posts.length;
       db.posts = db.posts.filter((x) => x.id !== parts[1]);
       if (db.posts.length === before) return send(res, 404, { error: 'לא נמצא' });
-      writeDb(db);
+      await writeDb(db);
       return send(res, 200, { ok: true });
     }
   }
@@ -198,6 +217,12 @@ async function handleApi(req, res, url) {
     if (!m) return send(res, 400, { error: 'פורמט תמונה לא נתמך' });
     const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
     const name = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
+    if (USE_BLOB) {
+      const { url } = await blob.put(`uploads/${name}`, Buffer.from(m[2], 'base64'), {
+        access: 'public', contentType: `image/${m[1] === 'jpg' ? 'jpeg' : m[1]}`,
+      });
+      return send(res, 201, { url });
+    }
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
     fs.writeFileSync(path.join(UPLOADS_DIR, name), Buffer.from(m[2], 'base64'));
     return send(res, 201, { url: `/uploads/${name}` });
